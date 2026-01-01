@@ -17,8 +17,8 @@
 
 **Purpose**: Project structure and foundational Task entity
 
-- [ ] T-001 Create project structure with src/ and tests/ directories per plan.md
-- [ ] T-002 [P] [US1] Create Task dataclass with validation in src/todo_app.py
+- [X] T-001 Create project structure with src/ and tests/ directories per plan.md
+- [X] T-002 [P] [US1] Create Task dataclass with validation in src/todo_app.py
   - **From**: plan.md lines 169-201 (Task dataclass section)
   - **Description**: Implement the Task dataclass with fields (id, title, description, completed, created_at) and `__post_init__` validation for title trimming and empty check
   - **Preconditions**: Project structure exists (T-001)
@@ -51,7 +51,7 @@
     - ✓ Whitespace-only title "   " raises ValueError
   - **Estimated time**: 20 mins
 
-- [ ] T-003 [P] Write unit tests for Task dataclass in tests/test_todo_app.py
+- [X] T-003 [P] Write unit tests for Task dataclass in tests/test_todo_app.py
   - **From**: plan.md lines 723-748 (TestTaskDataclass section)
   - **Description**: Create TestTaskDataclass class with 4 test methods covering creation, trimming, and validation
   - **Preconditions**: Task dataclass exists (T-002)
@@ -70,7 +70,7 @@
 
 ### User Story 1: Add Task
 
-- [ ] T-004 [US1] Implement add_task() function in src/todo_app.py
+- [X] T-004 [US1] Implement add_task() function in src/todo_app.py
   - **From**: plan.md lines 213-246 (add_task section), spec.md FR-003, FR-004, FR-007
   - **Description**: Create add_task(title, description="") that validates via Task dataclass, appends to global TASKS list, and returns the new Task
   - **Preconditions**: Task dataclass and global TASKS list exist (T-002)
@@ -97,7 +97,7 @@
     - ✓ Sets completed to False
   - **Estimated time**: 15 mins
 
-- [ ] T-005 [P] Write unit tests for add_task() in tests/test_todo_app.py
+- [X] T-005 [P] Write unit tests for add_task() in tests/test_todo_app.py
   - **From**: plan.md lines 751-777 (TestAddTask section)
   - **Description**: Create TestAddTask class with setUp() to clear TASKS and 4 test methods
   - **Preconditions**: add_task() exists (T-004)
@@ -110,7 +110,7 @@
 
 ### User Story 2: View Tasks
 
-- [ ] T-006 [P] [US2] Implement view_tasks() function in src/todo_app.py
+- [X] T-006 [P] [US2] Implement view_tasks() function in src/todo_app.py
   - **From**: plan.md lines 304-321 (view_tasks section), spec.md FR-008, FR-009
   - **Description**: Create view_tasks() that returns a copy of the global TASKS list to prevent external modification
   - **Preconditions**: Global TASKS exists (T-004)
@@ -128,7 +128,7 @@
     - ✓ Returns copy (modifications don't affect TASKS)
   - **Estimated time**: 10 mins
 
-- [ ] T-007 [P] Write unit tests for view_tasks() in tests/test_todo_app.py
+- [X] T-007 [P] Write unit tests for view_tasks() in tests/test_todo_app.py
   - **From**: plan.md lines 808-826 (TestViewTasks section)
   - **Description**: Create TestViewTasks class with 2 test methods
   - **Preconditions**: view_tasks() and add_task() exist (T-004, T-006)
@@ -140,7 +140,7 @@
 
 ### User Story 4: Update Task (depends on find)
 
-- [ ] T-008 [US4] Implement find_task_by_id() function in src/todo_app.py
+- [X] T-008 [US4] Implement find_task_by_id() function in src/todo_app.py
   - **From**: plan.md lines 248-302 (find_task_by_id section), spec.md FR-014, FR-015
   - **Description**: Create find_task_by_id(task_id_input) supporting both full UUID (36 chars) and 8-char hex prefix with validation and ambiguity detection
   - **Preconditions**: Global TASKS exists (T-004)
@@ -155,7 +155,7 @@
     - ✓ Case-insensitive hex matching
   - **Estimated time**: 40 mins
 
-- [ ] T-009 [P] Write unit tests for find_task_by_id() in tests/test_todo_app.py
+- [X] T-009 [P] Write unit tests for find_task_by_id() in tests/test_todo_app.py
   - **From**: plan.md lines 779-806 (TestFindTaskById section)
   - **Description**: Create TestFindTaskById class with setUp creating 2 tasks and 4 test methods
   - **Preconditions**: find_task_by_id() exists (T-008)
@@ -165,7 +165,7 @@
     - ✓ All 4 test scenarios pass
   - **Estimated time**: 30 mins
 
-- [ ] T-010 [US4] Implement update_task() function in src/todo_app.py
+- [X] T-010 [US4] Implement update_task() function in src/todo_app.py
   - **From**: plan.md lines 324-366 (update_task section), spec.md FR-011, FR-012
   - **Description**: Create update_task(task_id_input, new_title, new_description) that allows partial updates with None to keep existing values
   - **Preconditions**: find_task_by_id() exists (T-008)
@@ -180,7 +180,7 @@
     - ✓ Does not modify created_at or id
   - **Estimated time**: 20 mins
 
-- [ ] T-011 [P] Write unit tests for update_task() in tests/test_todo_app.py
+- [X] T-011 [P] Write unit tests for update_task() in tests/test_todo_app.py
   - **From**: plan.md lines 828-859 (TestUpdateTask section)
   - **Description**: Create TestUpdateTask class with setUp creating 1 task and 4 test methods
   - **Preconditions**: update_task() exists (T-010)
@@ -192,7 +192,7 @@
 
 ### User Story 5: Delete Task
 
-- [ ] T-012 [P] [US5] Implement delete_task() function in src/todo_app.py
+- [X] T-012 [P] [US5] Implement delete_task() function in src/todo_app.py
   - **From**: plan.md lines 369-395 (delete_task section), spec.md FR-013, FR-014
   - **Description**: Create delete_task(task_id_input) that finds and removes task from TASKS list
   - **Preconditions**: find_task_by_id() exists (T-008)
@@ -213,7 +213,7 @@
     - ✓ Decreases len(TASKS) by 1
   - **Estimated time**: 10 mins
 
-- [ ] T-013 [P] Write unit tests for delete_task() in tests/test_todo_app.py
+- [X] T-013 [P] Write unit tests for delete_task() in tests/test_todo_app.py
   - **From**: plan.md lines 861-878 (TestDeleteTask section)
   - **Description**: Create TestDeleteTask class with 2 test methods
   - **Preconditions**: delete_task() exists (T-012)
@@ -225,7 +225,7 @@
 
 ### User Story 3: Toggle Complete
 
-- [ ] T-014 [P] [US3] Implement toggle_complete() function in src/todo_app.py
+- [X] T-014 [P] [US3] Implement toggle_complete() function in src/todo_app.py
   - **From**: plan.md lines 397-424 (toggle_complete section), spec.md FR-010
   - **Description**: Create toggle_complete(task_id_input) that flips the completed boolean
   - **Preconditions**: find_task_by_id() exists (T-008)
@@ -246,7 +246,7 @@
     - ✓ Does not modify other fields
   - **Estimated time**: 10 mins
 
-- [ ] T-015 [P] Write unit tests for toggle_complete() in tests/test_todo_app.py
+- [X] T-015 [P] Write unit tests for toggle_complete() in tests/test_todo_app.py
   - **From**: plan.md lines 880-899 (TestToggleComplete section)
   - **Description**: Create TestToggleComplete class with 2 test methods
   - **Preconditions**: toggle_complete() exists (T-014)
@@ -264,7 +264,7 @@
 
 ### Display Functions
 
-- [ ] T-016 [P] [US2] Implement display_menu() function in src/todo_app.py
+- [X] T-016 [P] [US2] Implement display_menu() function in src/todo_app.py
   - **From**: plan.md lines 430-455 (display_menu section), spec.md FR-001
   - **Description**: Create display_menu() that prints the 6-option main menu
   - **Preconditions**: None (pure display)
@@ -276,7 +276,7 @@
     - ✓ Properly formatted with borders
   - **Estimated time**: 10 mins
 
-- [ ] T-017 [P] [US2] Implement display_tasks() function in src/todo_app.py
+- [X] T-017 [P] [US2] Implement display_tasks() function in src/todo_app.py
   - **From**: plan.md lines 457-499 (display_tasks section), spec.md FR-008, FR-009
   - **Description**: Create display_tasks(tasks) that shows formatted table with ID (8 chars), Title, Description (50 chars max), Status ([✓]/[ ]), Created (YYYY-MM-DD HH:MM)
   - **Preconditions**: Task dataclass exists (T-002)
@@ -293,7 +293,7 @@
 
 ### Input Handlers
 
-- [ ] T-018 [P] [US1] Implement handle_add() function in src/todo_app.py
+- [X] T-018 [P] [US1] Implement handle_add() function in src/todo_app.py
   - **From**: plan.md lines 501-521 (handle_add section), spec.md US1
   - **Description**: Create handle_add() that prompts for title and description, calls add_task(), displays success message
   - **Preconditions**: add_task() exists (T-004)
@@ -306,7 +306,7 @@
     - ✓ Errors caught by main loop (not here)
   - **Estimated time**: 15 mins
 
-- [ ] T-019 [P] [US2] Implement handle_view() function in src/todo_app.py
+- [X] T-019 [P] [US2] Implement handle_view() function in src/todo_app.py
   - **From**: plan.md lines 523-534 (handle_view section), spec.md US2
   - **Description**: Create handle_view() that calls view_tasks() and display_tasks()
   - **Preconditions**: view_tasks() and display_tasks() exist (T-006, T-017)
@@ -323,7 +323,7 @@
     - ✓ Displays tasks
   - **Estimated time**: 5 mins
 
-- [ ] T-020 [P] [US4] Implement handle_update() function in src/todo_app.py
+- [X] T-020 [P] [US4] Implement handle_update() function in src/todo_app.py
   - **From**: plan.md lines 536-566 (handle_update section), spec.md US4, FR-011
   - **Description**: Create handle_update() with sequential prompts for ID, new title (Enter to keep), new description (Enter to keep)
   - **Preconditions**: update_task() exists (T-010)
@@ -336,7 +336,7 @@
     - ✓ Displays "Success: Task [8-char ID] updated"
   - **Estimated time**: 20 mins
 
-- [ ] T-021 [P] [US5] Implement handle_delete() function in src/todo_app.py
+- [X] T-021 [P] [US5] Implement handle_delete() function in src/todo_app.py
   - **From**: plan.md lines 568-585 (handle_delete section), spec.md US5
   - **Description**: Create handle_delete() that prompts for ID, calls delete_task(), displays success
   - **Preconditions**: delete_task() exists (T-012)
@@ -348,7 +348,7 @@
     - ✓ Displays success with ID
   - **Estimated time**: 10 mins
 
-- [ ] T-022 [P] [US3] Implement handle_toggle() function in src/todo_app.py
+- [X] T-022 [P] [US3] Implement handle_toggle() function in src/todo_app.py
   - **From**: plan.md lines 587-605 (handle_toggle section), spec.md US3
   - **Description**: Create handle_toggle() that prompts for ID, calls toggle_complete(), displays success with status
   - **Preconditions**: toggle_complete() exists (T-014)
@@ -366,7 +366,7 @@
 
 **Purpose**: Application entry point and menu routing
 
-- [ ] T-023 Implement main() function in src/todo_app.py
+- [X] T-023 Implement main() function in src/todo_app.py
   - **From**: plan.md lines 612-667 (main function section), spec.md FR-001, FR-002, FR-016, FR-018, FR-019
   - **Description**: Create main() loop with welcome message, menu display, input handling, routing to handlers, error catching, and exit
   - **Preconditions**: All handlers and display_menu exist (T-016 through T-022)
@@ -389,7 +389,7 @@
     - ✓ Exits with code 0
   - **Estimated time**: 40 mins
 
-- [ ] T-024 Add if __name__ == "__main__": main() entry point in src/todo_app.py
+- [X] T-024 Add if __name__ == "__main__": main() entry point in src/todo_app.py
   - **From**: plan.md lines 665-667
   - **Description**: Add standard Python entry point at bottom of file
   - **Preconditions**: main() exists (T-023)
@@ -409,7 +409,7 @@
 
 **Purpose**: End-to-end validation and user documentation
 
-- [ ] T-025 Write integration test for full CRUD workflow in tests/test_todo_app.py
+- [X] T-025 Write integration test for full CRUD workflow in tests/test_todo_app.py
   - **From**: plan.md lines 901-930 (TestIntegrationWorkflow section)
   - **Description**: Create TestIntegrationWorkflow class with test_full_crud_cycle covering create → read → update → toggle → delete sequence
   - **Preconditions**: All core functions exist (T-004 through T-014)
@@ -421,7 +421,7 @@
     - ✓ Final state is clean (empty TASKS)
   - **Estimated time**: 25 mins
 
-- [ ] T-026 Run all tests and verify 80%+ coverage
+- [X] T-026 Run all tests and verify 80%+ coverage
   - **From**: plan.md lines 936-941 (Coverage Goals section), constitution.md Principle III
   - **Description**: Execute full test suite with unittest and verify all tests pass
   - **Preconditions**: All tests written (T-003, T-005, T-007, T-009, T-011, T-013, T-015, T-025)
@@ -434,7 +434,7 @@
     - ✓ Coverage meets 80%+ threshold (manual check or coverage.py)
   - **Estimated time**: 15 mins
 
-- [ ] T-027 [P] Create README.md with setup and usage instructions
+- [X] T-027 [P] Create README.md with setup and usage instructions
   - **From**: plan.md line 1039 (README.md section), spec.md Assumptions 10
   - **Description**: Write user-facing README with Python/UV requirements, setup steps, running instructions, feature overview, and data warning
   - **Preconditions**: Application complete (T-024)
@@ -452,7 +452,7 @@
     - ✓ Data persistence warning prominent
   - **Estimated time**: 30 mins
 
-- [ ] T-028 Manual testing checklist validation
+- [X] T-028 Manual testing checklist validation
   - **From**: plan.md lines 943-961 (Manual Testing Checklist)
   - **Description**: Manually execute all 16 test scenarios from the checklist to validate end-to-end functionality
   - **Preconditions**: Application complete (T-024)
