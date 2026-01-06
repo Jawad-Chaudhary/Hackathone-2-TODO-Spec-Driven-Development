@@ -1,0 +1,76 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+!.env.local.example
+.env.local
+.env.production
+.env.development
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+.tox/
+
+# Build artifacts
+*.pyc
+*.pyo
+*.egg
+*.whl
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Test and temporary files
+test-*.sh
+test-*.txt
+*-cookies.txt
+cookies.txt
+test_*.py
+*verification*.md
+*RESULTS.md
+build-output.txt
+phase9-testing.txt
