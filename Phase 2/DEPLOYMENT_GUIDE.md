@@ -2,8 +2,8 @@
 
 Complete guide for deploying the Todo Full-Stack Web Application to production.
 
-**Frontend**: Vercel
-**Backend**: Railway
+**Frontend**: Vercel (Free Tier)
+**Backend**: Render (Free Tier) or Railway (if you have credits)
 **Database**: Neon PostgreSQL (already configured)
 
 ---
@@ -11,11 +11,12 @@ Complete guide for deploying the Todo Full-Stack Web Application to production.
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
-2. [Backend Deployment (Railway)](#backend-deployment-railway)
-3. [Frontend Deployment (Vercel)](#frontend-deployment-vercel)
-4. [Environment Variables](#environment-variables)
-5. [Post-Deployment Testing](#post-deployment-testing)
-6. [Troubleshooting](#troubleshooting)
+2. [Backend Deployment (Render - Recommended)](#backend-deployment-render)
+3. [Backend Deployment (Railway - Alternative)](#backend-deployment-railway-alternative)
+4. [Frontend Deployment (Vercel)](#frontend-deployment-vercel)
+5. [Environment Variables](#environment-variables)
+6. [Post-Deployment Testing](#post-deployment-testing)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -23,7 +24,8 @@ Complete guide for deploying the Todo Full-Stack Web Application to production.
 
 ### Required Accounts
 - [ ] GitHub account (for code repository)
-- [ ] Railway account (https://railway.app)
+- [ ] **Render account** (https://render.com) - **RECOMMENDED for free tier**
+- [ ] **OR** Railway account (https://railway.app) - if you have credits
 - [ ] Vercel account (https://vercel.com)
 - [ ] Neon PostgreSQL account (already have database)
 
@@ -40,27 +42,17 @@ Before deploying, gather:
 
 ---
 
-## Backend Deployment (Railway)
+## Backend Deployment (Render)
+
+**Recommended for free tier deployment**
 
 ### Step 1: Prepare Backend for Deployment
 
-#### 1.1 Create Railway Configuration File
+#### 1.1 Verify Configuration Files
 
-Create `railway.toml` in the `backend` directory:
-
-```toml
-[build]
-builder = "NIXPACKS"
-
-[deploy]
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-healthcheckPath = "/"
-healthcheckTimeout = 100
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10
-```
-
-#### 1.2 Verify `requirements.txt`
+The `backend` directory already contains:
+- `requirements.txt` - Python dependencies
+- `render.yaml` - Render configuration (optional)
 
 Ensure `backend/requirements.txt` contains:
 
@@ -73,6 +65,119 @@ python-dotenv==1.0.0
 pyjwt==2.8.0
 python-multipart==0.0.9
 passlib[bcrypt]==1.7.4
+```
+
+### Step 2: Deploy to Render
+
+#### 2.1 Push Code to GitHub
+
+```bash
+# From project root
+git add .
+git commit -m "Prepare for Render deployment"
+git push origin main
+```
+
+#### 2.2 Create Render Web Service
+
+1. Go to https://dashboard.render.com/
+2. Click **"New +"** → **"Web Service"**
+3. Connect your GitHub repository
+4. Select your repository
+
+#### 2.3 Configure Render Service
+
+Fill in these settings:
+
+- **Name**: `todo-api` (or any name you prefer)
+- **Region**: Choose closest to you (e.g., Oregon, Frankfurt, Singapore)
+- **Branch**: `main`
+- **Root Directory**: `Phase 2/backend`
+- **Runtime**: `Python 3`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Instance Type**: `Free`
+
+#### 2.4 Add Environment Variables
+
+Click **"Advanced"** → **"Add Environment Variable"** and add these:
+
+```bash
+# Python Version
+PYTHON_VERSION=3.11.0
+
+# Database
+DATABASE_URL=postgresql+asyncpg://user:password@ep-xxx.aws.neon.tech/neondb?sslmode=require
+
+# Authentication (MUST match frontend)
+BETTER_AUTH_SECRET=your-72-character-secret-here
+
+# CORS - Will update after frontend deployment
+CORS_ORIGINS=http://localhost:3000
+
+# Environment
+ENVIRONMENT=production
+
+# Logging
+LOG_LEVEL=INFO
+```
+
+**Important Notes**:
+- Replace `DATABASE_URL` with your actual Neon PostgreSQL connection string
+- Generate `BETTER_AUTH_SECRET` with: `openssl rand -base64 48`
+- We'll update `CORS_ORIGINS` after deploying frontend
+- `PYTHON_VERSION=3.11.0` ensures correct Python version
+
+#### 2.5 Deploy
+
+1. Click **"Create Web Service"**
+2. Wait 5-10 minutes for initial deployment (free tier takes longer)
+3. Monitor build logs for any errors
+
+#### 2.6 Get Render Backend URL
+
+1. Once deployed, find your service URL at the top
+2. Copy the URL (e.g., `https://todo-api.onrender.com`)
+3. **Save this URL** - you'll need it for frontend deployment
+
+### Step 3: Verify Backend Deployment
+
+Test the backend API:
+
+```bash
+# Check health endpoint
+curl https://todo-api.onrender.com/
+
+# Expected response: {"message":"Todo API is running"}
+```
+
+**Note**: On Render's free tier:
+- Service sleeps after 15 minutes of inactivity
+- First request after sleep takes ~30 seconds to wake up
+- This is normal behavior for free tier
+
+---
+
+## Backend Deployment (Railway - Alternative)
+
+**Use this if you have Railway credits or prefer faster performance**
+
+### Step 1: Prepare Backend for Deployment
+
+#### 1.1 Verify Railway Configuration
+
+The `backend` directory contains `railway.toml`:
+
+```toml
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
 ```
 
 ### Step 2: Deploy to Railway
@@ -98,50 +203,30 @@ git push origin main
 1. Click on the deployed service
 2. Go to **Settings** tab
 3. Set **Root Directory**: `Phase 2/backend`
-4. Set **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Click **Generate Domain** (save this URL!)
 
 #### 2.4 Add Environment Variables
 
 In Railway dashboard, go to **Variables** tab and add:
 
 ```bash
-# Database
 DATABASE_URL=postgresql+asyncpg://user:password@ep-xxx.aws.neon.tech/neondb?sslmode=require
-
-# Authentication (MUST match frontend)
 BETTER_AUTH_SECRET=your-72-character-secret-here
-
-# CORS - Add your Vercel domain here after frontend deployment
 CORS_ORIGINS=https://your-app.vercel.app
-
-# Environment
 ENVIRONMENT=production
-
-# Logging
 LOG_LEVEL=INFO
 ```
 
-**Important Notes**:
-- Replace `DATABASE_URL` with your actual Neon PostgreSQL connection string
-- Generate `BETTER_AUTH_SECRET` with: `openssl rand -base64 48`
-- After deploying frontend, update `CORS_ORIGINS` with your Vercel domain
+**Important**:
+- Railway has $5/month free credit limit
+- Service does NOT sleep (always on)
+- Much faster than Render free tier
 
-#### 2.5 Get Railway Backend URL
-
-1. Go to **Settings** tab
-2. Click **Generate Domain**
-3. Copy the domain (e.g., `your-app.up.railway.app`)
-4. **Save this URL** - you'll need it for frontend deployment
-
-### Step 3: Verify Backend Deployment
-
-Test the backend API:
+#### 2.5 Verify Deployment
 
 ```bash
-# Check health endpoint
 curl https://your-app.up.railway.app/
-
-# Expected response: {"message":"Todo API is running"}
+# Expected: {"message":"Todo API is running"}
 ```
 
 ---
@@ -193,14 +278,14 @@ BETTER_AUTH_SECRET=your-72-character-secret-here-same-as-backend
 # Better Auth URL (your Vercel domain)
 BETTER_AUTH_URL=https://your-app.vercel.app
 
-# API URL (your Railway backend URL)
-NEXT_PUBLIC_API_URL=https://your-app.up.railway.app
+# API URL (your Render or Railway backend URL)
+NEXT_PUBLIC_API_URL=https://todo-api.onrender.com
 ```
 
 **Important Notes**:
 - `BETTER_AUTH_SECRET` MUST be identical to backend
 - Replace `BETTER_AUTH_URL` with your actual Vercel domain
-- Replace `NEXT_PUBLIC_API_URL` with your Railway backend URL
+- Replace `NEXT_PUBLIC_API_URL` with your Render (or Railway) backend URL
 
 #### 2.4 Deploy
 
@@ -212,14 +297,23 @@ NEXT_PUBLIC_API_URL=https://your-app.up.railway.app
 
 After getting your Vercel domain:
 
+**For Render:**
+1. Go back to **Render dashboard**
+2. Click on your service
+3. Go to **Environment** tab
+4. Edit `CORS_ORIGINS`:
+   ```bash
+   CORS_ORIGINS=https://your-app.vercel.app
+   ```
+5. Click **Save Changes** (Render will automatically redeploy)
+
+**For Railway:**
 1. Go back to **Railway dashboard**
 2. Go to **Variables** tab
 3. Update `CORS_ORIGINS`:
-
-```bash
-CORS_ORIGINS=https://your-app.vercel.app
-```
-
+   ```bash
+   CORS_ORIGINS=https://your-app.vercel.app
+   ```
 4. Save changes (Railway will automatically redeploy)
 
 ---
@@ -228,7 +322,7 @@ CORS_ORIGINS=https://your-app.vercel.app
 
 ### Complete Environment Variables Checklist
 
-#### Backend (Railway)
+#### Backend (Render or Railway)
 
 | Variable | Description | Example | Required |
 |----------|-------------|---------|----------|
@@ -237,6 +331,7 @@ CORS_ORIGINS=https://your-app.vercel.app
 | `CORS_ORIGINS` | Allowed frontend domains | `https://your-app.vercel.app` | ✅ Yes |
 | `ENVIRONMENT` | Environment name | `production` | ✅ Yes |
 | `LOG_LEVEL` | Logging level | `INFO` | Optional |
+| `PYTHON_VERSION` | Python version (Render only) | `3.11.0` | Render: ✅ Yes |
 
 #### Frontend (Vercel)
 
@@ -244,7 +339,7 @@ CORS_ORIGINS=https://your-app.vercel.app
 |----------|-------------|---------|----------|
 | `BETTER_AUTH_SECRET` | Shared secret for JWT (MUST match backend) | Same as backend | ✅ Yes |
 | `BETTER_AUTH_URL` | Frontend base URL | `https://your-app.vercel.app` | ✅ Yes |
-| `NEXT_PUBLIC_API_URL` | Backend API URL | `https://your-app.up.railway.app` | ✅ Yes |
+| `NEXT_PUBLIC_API_URL` | Backend API URL | `https://todo-api.onrender.com` or `https://your-app.up.railway.app` | ✅ Yes |
 
 ### Generating Secrets
 
@@ -262,11 +357,16 @@ openssl rand -base64 48
 ### 1. Test Backend API
 
 ```bash
-# Health check
+# Health check (Render)
+curl https://todo-api.onrender.com/
+
+# OR Health check (Railway)
 curl https://your-app.up.railway.app/
 
 # Expected: {"message":"Todo API is running"}
 ```
+
+**Note for Render**: First request may take ~30 seconds if service was asleep.
 
 ### 2. Test Frontend
 
@@ -383,7 +483,8 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
 After deployment, update this section with your actual URLs:
 
 - **Frontend (Vercel)**: https://your-app.vercel.app
-- **Backend (Railway)**: https://your-app.up.railway.app
+- **Backend (Render)**: https://todo-api.onrender.com
+- **Backend (Railway)**: https://your-app.up.railway.app (if using Railway)
 - **Database (Neon)**: Already configured
 
 ---
@@ -403,22 +504,32 @@ Before going live:
 
 ## Cost Estimates
 
-### Railway (Backend)
-- **Free Tier**: $5 credit/month (should cover small usage)
-- **Starter Plan**: $5/month after free tier
-- **Expected Cost**: $0-5/month for small apps
+### Render (Backend) - RECOMMENDED
+- **Free Tier**: FREE forever
+- **Limits**: 750 hours/month, sleeps after 15 min inactivity
+- **Performance**: Wakes in ~30 seconds
+- **Expected Cost**: $0/month
+
+### Railway (Backend) - ALTERNATIVE
+- **Free Tier**: $5 credit/month
+- **Limits**: Limited to $5/month usage
+- **Performance**: Always on, no sleep
+- **Expected Cost**: $0-5/month
 
 ### Vercel (Frontend)
-- **Hobby Plan**: FREE
+- **Hobby Plan**: FREE forever
 - **Unlimited deployments**
 - **100GB bandwidth/month**
 - **Expected Cost**: $0/month
 
 ### Neon PostgreSQL (Database)
-- **Free Tier**: 0.5GB storage, 1 project
-- **Expected Cost**: $0/month for development
+- **Free Tier**: FREE forever
+- **Limits**: 0.5GB storage, 1 project
+- **Expected Cost**: $0/month
 
-**Total Expected Cost**: $0-5/month
+**Total Expected Cost**:
+- **Recommended (Render + Vercel + Neon)**: $0/month
+- **Alternative (Railway + Vercel + Neon)**: $0-5/month
 
 ---
 
