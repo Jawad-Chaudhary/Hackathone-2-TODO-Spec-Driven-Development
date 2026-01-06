@@ -161,6 +161,15 @@ function TasksPageContent() {
     setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
   };
 
+  /**
+   * Handle task update - update task in local state.
+   */
+  const handleTaskUpdate = (taskId: number, updatedTask: Task) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => (task.id === taskId ? updatedTask : task))
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Bar */}
@@ -216,6 +225,7 @@ function TasksPageContent() {
                 userId={userId}
                 onRetry={handleRetry}
                 onTaskDelete={handleTaskDelete}
+                onTaskUpdate={handleTaskUpdate}
               />
             )}
           </div>

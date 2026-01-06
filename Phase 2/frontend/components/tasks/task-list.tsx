@@ -13,6 +13,7 @@ export interface TaskListProps {
   userId: string; // Required for TaskItem API calls
   onRetry?: () => void;
   onTaskDelete?: (taskId: number) => void; // Callback when task is deleted
+  onTaskUpdate?: (taskId: number, updatedTask: Task) => void; // Callback when task is updated
 }
 
 /**
@@ -36,6 +37,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   userId,
   onRetry,
   onTaskDelete,
+  onTaskUpdate,
 }) => {
   // [Task T045, T078] Loading State: Show skeleton UI with responsive padding
   if (loading) {
@@ -150,6 +152,7 @@ export const TaskList: React.FC<TaskListProps> = ({
           task={task}
           userId={userId}
           onDelete={onTaskDelete}
+          onUpdate={onTaskUpdate}
         />
       ))}
     </div>

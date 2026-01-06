@@ -24,6 +24,7 @@ export interface TaskItemProps {
   task: Task;
   userId: string; // Required for API calls
   onDelete?: (taskId: number) => void; // Callback to remove task from list
+  onUpdate?: (taskId: number, updatedTask: Task) => void; // Callback to update task in list
 }
 
 /**
@@ -45,7 +46,7 @@ export interface TaskItemProps {
  * @param userId - User ID for making API calls
  * @param onDelete - Optional callback to remove task from parent list
  */
-export const TaskItem: React.FC<TaskItemProps> = ({ task, userId, onDelete }) => {
+export const TaskItem: React.FC<TaskItemProps> = ({ task, userId, onDelete, onUpdate }) => {
   // [Task T056] Local state for optimistic UI updates
   const [isCompleted, setIsCompleted] = useState(task.completed);
   const [error, setError] = useState<string | null>(null);
@@ -98,9 +99,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, userId, onDelete }) =>
     setIsUpdating(true);
 
     try {
-      await updateTask(userId, task.id, data);
+      const updatedTask = await updateTask(userId, task.id, data);
       setIsEditing(false); // Exit edit mode on success
-      // Note: Parent component should refetch task list to show updated data
+      // Notify parent component to update the task in the list
+      onUpdate?.(task.id, updatedTask);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to update task";
