@@ -1,0 +1,31 @@
+# [Task]: T-002
+# [From]: specs/001-ai-todo-chatbot/tasks.md
+
+# FastAPI and Server
+fastapi>=0.109.0
+uvicorn[standard]>=0.31.1
+
+# Database
+sqlmodel==0.0.14
+alembic>=1.13.1
+asyncpg>=0.30.0
+sqlalchemy[asyncio]>=2.0.25
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# OpenAI and MCP
+openai>=1.62.0
+mcp>=1.25.0
+
+# HTTP Client
+httpx>=0.27.1
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+
+# Development
+python-dotenv==1.0.1
