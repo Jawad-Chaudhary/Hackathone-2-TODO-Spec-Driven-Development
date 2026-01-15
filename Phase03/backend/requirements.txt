@@ -4,6 +4,8 @@
 # FastAPI and Server
 fastapi>=0.109.0
 uvicorn[standard]>=0.31.1
+pydantic[email]>=2.0.0
+email-validator>=2.0.0
 
 # Database
 sqlmodel==0.0.14
