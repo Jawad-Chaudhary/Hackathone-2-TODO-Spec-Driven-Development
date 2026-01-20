@@ -1,215 +1,355 @@
-'use client';
+// [Task T077] Chat page with OpenAI ChatKit integration
 
-import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ChatList } from '@/components/ChatList';
-import { ChatInput } from '@/components/ChatInput';
-import { ApiClient } from '@/lib/api';
-import { authService } from '@/lib/auth';
-import type { Message } from '@/lib/types';
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { sendMessage, hasToolCalls } from "@/lib/chat-api";
+import { getSession } from "@/lib/session";
+import { logoutAndRedirect } from "@/lib/logout";
+import { ChatResponse, ToolCall } from "@/lib/types";
 
 /**
- * Main chat page component
- * Client Component - manages chat state and API calls
- * Requires authentication to access
+ * Chat page content component.
+ *
+ * Features:
+ * - OpenAI ChatKit integration for conversational UI
+ * - JWT authentication with automatic token handling
+ * - Conversation persistence with conversation_id
+ * - Tool call display when AI agent performs actions
+ * - Loading and error states
+ * - Responsive design with Tailwind CSS
+ *
+ * Security:
+ * - Protected with authentication check
+ * - JWT token automatically included in API requests
+ * - User can only access their own chat conversations
  */
-export default function ChatPage() {
+function ChatPageContent() {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState<number | undefined>(undefined);
   const [userId, setUserId] = useState<string | null>(null);
-  const [apiClient, setApiClient] = useState<ApiClient | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<
+    Array<{ role: "user" | "assistant"; content: string; toolCalls?: ToolCall[] }>
+  >([]);
+  const [inputMessage, setInputMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(true);
 
   /**
-   * Check authentication on mount
+   * Fetch user session and set user ID on mount.
    */
   useEffect(() => {
-    const token = authService.getToken();
-    const user = authService.getUser();
-
-    if (!token || !user) {
-      // Redirect to signin if not authenticated
-      router.push('/signin');
-      return;
+    async function getUserId() {
+      try {
+        const sessionData = await getSession();
+        if (sessionData?.user?.id) {
+          setUserId(sessionData.user.id);
+        } else {
+          setError("Failed to get user session");
+          router.push("/auth/signin");
+        }
+      } catch (err) {
+        console.error("Error getting user session:", err);
+        setError("Failed to get user session");
+        router.push("/auth/signin");
+      } finally {
+        setInitializing(false);
+      }
     }
-
-    // Initialize API client with token
-    const client = new ApiClient(undefined, token);
-    setApiClient(client);
-    setUserId(user.user_id);
+    getUserId();
   }, [router]);
 
   /**
-   * Handle sending a message
+   * Handle logout action.
    */
-  const handleSendMessage = useCallback(
-    async (content: string) => {
-      // Check if authenticated
-      if (!apiClient || !userId) {
-        setError('Not authenticated. Please sign in.');
-        router.push('/signin');
-        return;
-      }
-
-      // Clear any previous errors
-      setError(null);
-
-      // Add user message to UI immediately
-      const userMessage: Message = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, userMessage]);
-      setIsLoading(true);
-
-      try {
-        // Send message to backend
-        const response = await apiClient.sendMessage(userId, content, conversationId);
-
-        // Update conversation ID if this is a new conversation
-        if (!conversationId) {
-          setConversationId(response.conversation_id);
-        }
-
-        // Add assistant response to UI
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: response.response,
-          tool_calls: response.tool_calls.length > 0 ? response.tool_calls : undefined,
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, assistantMessage]);
-      } catch (err) {
-        // Handle errors gracefully
-        const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
-        setError(errorMessage);
-
-        // Add error message to chat
-        const errorAssistantMessage: Message = {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          content: `Sorry, I encountered an error: ${errorMessage}. Please try again.`,
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, errorAssistantMessage]);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [conversationId, userId, apiClient, router]
-  );
-
-  /**
-   * Handle sign out
-   */
-  const handleSignout = () => {
-    authService.signout();
-    router.push('/signin');
+  const handleLogout = async () => {
+    await logoutAndRedirect();
   };
 
-  // Show loading while checking auth
-  if (!apiClient || !userId) {
+  /**
+   * Handle sending a message to the AI agent.
+   */
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!userId) {
+      setError("User session not available");
+      return;
+    }
+
+    if (!inputMessage.trim()) {
+      return;
+    }
+
+    const userMessage = inputMessage.trim();
+    setInputMessage("");
+    setLoading(true);
+    setError(null);
+
+    // Add user message to chat
+    setMessages((prev) => [
+      ...prev,
+      { role: "user" as const, content: userMessage },
+    ]);
+
+    try {
+      // Send message to backend AI agent
+      const response: ChatResponse = await sendMessage(
+        userMessage,
+        conversationId || undefined
+      );
+
+      // Store conversation ID for future messages
+      if (response.conversation_id && !conversationId) {
+        setConversationId(response.conversation_id);
+      }
+
+      // Add assistant response to chat
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant" as const,
+          content: response.response,
+          toolCalls: response.tool_calls,
+        },
+      ]);
+    } catch (err) {
+      console.error("Error sending message:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to send message";
+      setError(errorMessage);
+
+      // Add error message to chat
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant" as const,
+          content: `Error: ${errorMessage}`,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Render tool calls as badges.
+   */
+  const renderToolCalls = (toolCalls: ToolCall[] | undefined) => {
+    if (!toolCalls || toolCalls.length === 0) {
+      return null;
+    }
+
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {toolCalls.map((toolCall) => (
+          <div
+            key={toolCall.id}
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+          >
+            <svg
+              className="mr-1.5 h-3 w-3"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {toolCall.function.name}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-600">Loading chat...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 px-6 py-4 flex-shrink-0 shadow-sm">
-        <div className="flex items-center justify-between max-w-5xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
-              AI
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Navigation Bar */}
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-xl font-semibold text-gray-900">AI Chat</h1>
+              <button
+                onClick={() => router.push("/tasks")}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                View Tasks
+              </button>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                AI Todo Chatbot
-              </h1>
-              <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                {conversationId
-                  ? `Conversation #${conversationId}`
-                  : 'New conversation'}
+            <div className="flex items-center">
+              <button
+                onClick={handleLogout}
+                className="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Chat Container */}
+      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full py-8 px-4 sm:px-6 lg:px-8">
+        {/* Messages Area */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm p-6 mb-4 overflow-y-auto">
+          {messages.length === 0 ? (
+            <div className="text-center text-gray-500 py-12">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No messages yet
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Start a conversation by sending a message below.
+              </p>
+              <p className="mt-2 text-xs text-gray-400">
+                Try: &quot;Add a task to buy groceries&quot; or &quot;List my
+                tasks&quot;
               </p>
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            {messages.length > 0 && (
-              <button
-                onClick={() => {
-                  setMessages([]);
-                  setConversationId(undefined);
-                  setError(null);
-                }}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-all duration-200 border border-transparent hover:border-blue-200 hover:shadow-sm"
-                aria-label="Start new conversation"
-              >
-                <span className="text-lg">+</span>
-                <span>New Chat</span>
-              </button>
-            )}
-            <button
-              onClick={handleSignout}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all duration-200"
-              aria-label="Sign out"
-            >
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Error banner */}
-      {error && (
-        <div
-          className="bg-red-50/80 backdrop-blur-sm border-b border-red-200 px-6 py-3.5 animate-fade-in"
-          role="alert"
-        >
-          <div className="max-w-5xl mx-auto flex items-center gap-3 text-sm text-red-800">
-            <span className="flex-shrink-0 w-6 h-6 bg-red-100 rounded-full flex items-center justify-center text-red-600 font-bold">!</span>
-            <div className="flex-1">
-              <span className="font-semibold">Error:</span> {error}
+          ) : (
+            <div className="space-y-4">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  <div
+                    className={`max-w-3/4 rounded-lg px-4 py-2 ${
+                      message.role === "user"
+                        ? "bg-indigo-600 text-white"
+                        : "bg-gray-100 text-gray-900"
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                    {message.role === "assistant" &&
+                      renderToolCalls(message.toolCalls)}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 rounded-lg px-4 py-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                      <div
+                        className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.1s" }}
+                      ></div>
+                      <div
+                        className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.2s" }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+          )}
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-red-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+              <div className="ml-auto pl-3">
+                <button
+                  onClick={() => setError(null)}
+                  className="inline-flex text-red-400 hover:text-red-500"
+                >
+                  <span className="sr-only">Dismiss</span>
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Input Form */}
+        <form onSubmit={handleSendMessage} className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex space-x-4">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder="Type your message... (e.g., 'Add a task to buy groceries')"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              disabled={loading}
+            />
             <button
-              onClick={() => setError(null)}
-              className="flex-shrink-0 px-3 py-1 text-xs font-medium text-red-700 hover:text-red-800 hover:bg-red-100 rounded-lg transition-colors"
-              aria-label="Dismiss error"
+              type="submit"
+              disabled={loading || !inputMessage.trim()}
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Dismiss
+              {loading ? "Sending..." : "Send"}
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Chat container */}
-      <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto overflow-hidden">
-        {/* Messages */}
-        <ChatList messages={messages} isLoading={isLoading} />
-
-        {/* Input */}
-        <ChatInput
-          onSend={handleSendMessage}
-          disabled={isLoading}
-          placeholder="Ask me to manage your tasks..."
-        />
+        </form>
       </div>
     </div>
+  );
+}
+
+/**
+ * Exported chat page component wrapped with authentication protection.
+ * This ensures the page is only accessible to authenticated users.
+ */
+export default function ChatPage() {
+  return (
+    <ProtectedRoute>
+      <ChatPageContent />
+    </ProtectedRoute>
   );
 }

@@ -1,43 +1,59 @@
-# [Task]: T-011
-# [From]: specs/001-ai-todo-chatbot/tasks.md
-
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-from alembic import context
 import os
-import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+from sqlalchemy import engine_from_config
+from sqlalchemy import pool
 
-# Add parent directory to path to import our models
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from alembic import context
 
-from src.models import Task, Conversation, Message
-from sqlmodel import SQLModel
+# Load .env file
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
-# this is the Alembic Config object
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
 config = context.config
 
+# Override sqlalchemy.url with DATABASE_URL from environment
+# Convert asyncpg to psycopg2 for migrations (Alembic doesn't support async)
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    # Replace asyncpg with psycopg2 for synchronous migrations
+    database_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+    config.set_main_option("sqlalchemy.url", database_url)
+
 # Interpret the config file for Python logging.
+# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set sqlalchemy.url from environment variable
-# Convert async URL to sync URL for Alembic migrations
-database_url = os.getenv("DATABASE_URL", "")
-# Replace asyncpg with psycopg2 for synchronous migrations
-sync_database_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
-config.set_main_option("sqlalchemy.url", sync_database_url)
+# add your model's MetaData object here
+# for 'autogenerate' support
+from app.models import Task, Conversation, Message
+from sqlmodel import SQLModel
 
-# add your model's MetaData object here for 'autogenerate' support
 target_metadata = SQLModel.metadata
+
+# other values from the config, defined by the needs of env.py,
+# can be acquired:
+# my_important_option = config.get_main_option("my_important_option")
+# ... etc.
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode."""
+    """Run migrations in 'offline' mode.
+
+    This configures the context with just a URL
+    and not an Engine, though an Engine is acceptable
+    here as well.  By skipping the Engine creation
+    we don't even need a DBAPI to be available.
+
+    Calls to context.execute() here emit the given string to the
+    script output.
+
+    """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -51,7 +67,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
+    """Run migrations in 'online' mode.
+
+    In this scenario we need to create an Engine
+    and associate a connection with the context.
+
+    """
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

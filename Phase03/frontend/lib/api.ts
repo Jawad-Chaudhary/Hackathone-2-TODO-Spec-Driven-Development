@@ -1,135 +1,227 @@
-/**
- * API Client for AI Todo Chatbot Backend
- * Handles all communication with the FastAPI backend
- */
+// [Task T020] API client base with JWT token extraction
 
-import type { ChatRequest, ChatResponse, Conversation, ApiError } from './types';
+import { getSession } from "./session";
+import { env } from "./env";
 
 /**
- * API Client class with type-safe methods
+ * Base API client configuration.
  */
-export class ApiClient {
-  private baseUrl: string;
-  private token: string;
+const API_BASE_URL = env.NEXT_PUBLIC_API_URL;
 
-  constructor(baseUrl?: string, token?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    this.token = token || this.getMockToken();
-  }
-
-  /**
-   * Generate a mock JWT token for development
-   * In production, this would come from Better Auth
-   */
-  private getMockToken(): string {
-    // Mock JWT token for development - in production, use real auth
-    return 'mock-jwt-token-for-development';
-  }
-
-  /**
-   * Handle API errors with user-friendly messages
-   */
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-
-      try {
-        const errorData: ApiError = await response.json();
-        errorMessage = errorData.detail || errorMessage;
-      } catch {
-        // If error response is not JSON, use default message
-      }
-
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Send a chat message to the AI agent
-   * @param userId - User ID (for now, use "demo-user")
-   * @param message - User message (1-2000 chars)
-   * @param conversationId - Optional conversation ID to continue existing conversation
-   */
-  async sendMessage(
-    userId: string,
-    message: string,
-    conversationId?: number
-  ): Promise<ChatResponse> {
-    if (!message || message.length === 0) {
-      throw new Error('Message cannot be empty');
-    }
-
-    if (message.length > 2000) {
-      throw new Error('Message is too long (max 2000 characters)');
-    }
-
-    const requestBody: ChatRequest = {
-      message,
-      ...(conversationId && { conversation_id: conversationId }),
-    };
-
-    const response = await fetch(`${this.baseUrl}/api/${userId}/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.token}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    return this.handleResponse<ChatResponse>(response);
-  }
-
-  /**
-   * Get list of all conversations for a user
-   * @param userId - User ID
-   */
-  async getConversations(userId: string): Promise<Conversation[]> {
-    const response = await fetch(`${this.baseUrl}/api/${userId}/conversations`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${this.token}`,
-      },
-    });
-
-    return this.handleResponse<Conversation[]>(response);
-  }
-
-  /**
-   * Get conversation history with all messages
-   * @param userId - User ID
-   * @param conversationId - Conversation ID
-   */
-  async getConversationHistory(
-    userId: string,
-    conversationId: number
-  ): Promise<ChatResponse[]> {
-    const response = await fetch(
-      `${this.baseUrl}/api/${userId}/conversations/${conversationId}`,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-        },
-      }
-    );
-
-    return this.handleResponse<ChatResponse[]>(response);
-  }
-
-  /**
-   * Update the auth token
-   * @param token - New JWT token
-   */
-  setToken(token: string): void {
-    this.token = token;
+/**
+ * Extract JWT token from session.
+ * Returns token from httpOnly cookie.
+ */
+async function getAuthToken(): Promise<string | null> {
+  try {
+    const sessionData = await getSession();
+    // Session token is stored in httpOnly cookie
+    // The token is automatically sent with requests via cookies
+    return sessionData?.session?.token || null;
+  } catch (error) {
+    console.error("Failed to get auth token:", error);
+    return null;
   }
 }
 
 /**
- * Default API client instance
- * For use in Client Components
+ * Make authenticated API request with JWT token in Authorization header.
+ * [Task T075] Enhanced error handling with network, server, and timeout errors.
  */
-export const apiClient = new ApiClient();
+export async function apiClient<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = await getAuthToken();
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+
+  // Add Authorization header if token exists
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  // [Task T075] Add timeout for API requests (30 seconds)
+  const timeoutMs = 30000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      credentials: "include", // Include cookies for Better Auth
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    // Handle non-2xx responses
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({
+        detail: `HTTP ${response.status}: ${response.statusText}`,
+      }));
+
+      // [Task T075] Redirect to sign-in on 401 Unauthorized
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          window.location.href = "/auth/signin";
+        }
+      }
+
+      // [Task T075] Handle 500 Internal Server Error
+      if (response.status >= 500) {
+        throw new Error(
+          "Server error. Please try again later or contact support if the problem persists."
+        );
+      }
+
+      throw new Error(
+        typeof errorData.detail === "string"
+          ? errorData.detail
+          : "An error occurred"
+      );
+    }
+
+    // Handle 204 No Content (e.g., DELETE requests)
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    // Parse JSON response for all other successful responses
+    return response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+
+    // [Task T075] Handle network errors
+    if (error instanceof TypeError) {
+      throw new Error(
+        "Network error. Please check your internet connection and try again."
+      );
+    }
+
+    // [Task T075] Handle timeout errors
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        "Request timeout. The server is taking too long to respond. Please try again."
+      );
+    }
+
+    // Re-throw other errors
+    throw error;
+  }
+}
+
+/**
+ * Export convenience method for making API requests.
+ */
+export const api = {
+  get: <T>(endpoint: string) => apiClient<T>(endpoint, { method: "GET" }),
+
+  post: <T>(endpoint: string, data?: unknown) =>
+    apiClient<T>(endpoint, {
+      method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+
+  put: <T>(endpoint: string, data?: unknown) =>
+    apiClient<T>(endpoint, {
+      method: "PUT",
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+
+  delete: <T>(endpoint: string) =>
+    apiClient<T>(endpoint, { method: "DELETE" }),
+};
+
+// ============================================
+// Task API Functions
+// ============================================
+
+import { Task, TaskCreate, TaskUpdate } from "./types";
+
+/**
+ * [Task T038] Get all tasks for a user with optional status filtering.
+ *
+ * @param userId - The authenticated user's ID
+ * @param status - Optional filter: "all" | "pending" | "completed"
+ * @returns Promise<Task[]> - Array of tasks
+ */
+export async function getTasks(
+  userId: string,
+  status?: "all" | "pending" | "completed"
+): Promise<Task[]> {
+  const endpoint = status && status !== "all"
+    ? `/api/${userId}/tasks?status=${status}`
+    : `/api/${userId}/tasks`;
+
+  return api.get<Task[]>(endpoint);
+}
+
+/**
+ * [Task T039] Create a new task for a user.
+ *
+ * @param userId - The authenticated user's ID
+ * @param data - Task creation payload (title, description)
+ * @returns Promise<Task> - Created task with id and timestamps
+ */
+export async function createTask(
+  userId: string,
+  data: TaskCreate
+): Promise<Task> {
+  return api.post<Task>(`/api/${userId}/tasks`, data);
+}
+
+/**
+ * [Task T052] Update an existing task for a user.
+ *
+ * @param userId - The authenticated user's ID
+ * @param taskId - The task ID to update
+ * @param data - Task update payload (title, description, completed)
+ * @returns Promise<Task> - Updated task with new values
+ */
+export async function updateTask(
+  userId: string,
+  taskId: number,
+  data: TaskUpdate
+): Promise<Task> {
+  return api.put<Task>(`/api/${userId}/tasks/${taskId}`, data);
+}
+
+/**
+ * [Task T053] Toggle task completion status.
+ * Helper function for convenience when toggling completed state.
+ *
+ * @param userId - The authenticated user's ID
+ * @param taskId - The task ID to toggle
+ * @param currentCompleted - Current completion status
+ * @returns Promise<Task> - Updated task with toggled completion
+ */
+export async function toggleComplete(
+  userId: string,
+  taskId: number,
+  currentCompleted: boolean
+): Promise<Task> {
+  return updateTask(userId, taskId, { completed: !currentCompleted });
+}
+
+/**
+ * [Task T068] Delete a task for a user.
+ *
+ * @param userId - The authenticated user's ID
+ * @param taskId - The task ID to delete
+ * @returns Promise<void> - 204 No Content on success
+ */
+export async function deleteTask(
+  userId: string,
+  taskId: number
+): Promise<void> {
+  // DELETE endpoint returns 204 No Content, so we use api.delete
+  // The apiClient will handle the response parsing
+  await api.delete<void>(`/api/${userId}/tasks/${taskId}`);
+}

@@ -1,32 +1,26 @@
 services:
-  # FastAPI Backend Service
   - type: web
-    name: ai-todo-backend
-    env: python
+    name: todo-api
+    runtime: python
     region: oregon
-    buildCommand: pip install -r requirements.txt && alembic upgrade head
-    startCommand: uvicorn src.api.app:app --host 0.0.0.0 --port $PORT
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
       - key: DATABASE_URL
         sync: false
       - key: BETTER_AUTH_SECRET
         sync: false
-      - key: GEMINI_API_KEY
-        sync: false
       - key: CORS_ORIGINS
         sync: false
-      - key: CORS_ALLOW_CREDENTIALS
-        value: true
-
-  # PostgreSQL Database
-  - type: pserv
-    name: ai-todo-db
-    env: docker
-    region: oregon
-    plan: free
-    disk:
-      name: ai-todo-db-disk
-      mountPath: /var/lib/postgresql/data
-      sizeGB: 1
+      - key: FRONTEND_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

@@ -1,67 +1,69 @@
-/**
- * Type definitions for AI Todo Chatbot
- * Aligned with backend API contracts
- */
+// [Task T018] TypeScript types matching backend Pydantic schemas
 
 /**
- * Tool call made by the AI agent
+ * Task interface matching backend TaskResponse schema.
  */
-export interface ToolCall {
-  name: string;
-  args: Record<string, unknown>;
-}
-
-/**
- * Request payload for chat API
- */
-export interface ChatRequest {
-  message: string;  // 1-2000 characters
-  conversation_id?: number;
-}
-
-/**
- * Response from chat API
- */
-export interface ChatResponse {
-  conversation_id: number;
-  response: string;
-  tool_calls: ToolCall[];
-}
-
-/**
- * Conversation metadata
- */
-export interface Conversation {
+export interface Task {
   id: number;
   user_id: string;
-  created_at: string;
-  updated_at: string;
+  title: string;
+  description: string | null;
+  completed: boolean;
+  created_at: string; // ISO 8601 datetime string
+  updated_at: string; // ISO 8601 datetime string
 }
 
 /**
- * Chat message in UI
+ * Task creation payload matching backend TaskCreate schema.
  */
-export interface Message {
+export interface TaskCreate {
+  title: string; // Required, 1-200 characters
+  description?: string | null; // Optional, max 1000 characters
+}
+
+/**
+ * Task update payload matching backend TaskUpdate schema.
+ * All fields are optional.
+ */
+export interface TaskUpdate {
+  title?: string; // 1-200 characters if provided
+  description?: string | null; // max 1000 characters if provided
+  completed?: boolean;
+}
+
+/**
+ * API error response structure.
+ */
+export interface APIError {
+  detail: string | { loc: string[]; msg: string; type: string }[];
+}
+
+/**
+ * Chat message request payload matching backend ChatRequest schema.
+ */
+export interface ChatRequest {
+  message: string;
+  conversation_id?: string | null;
+}
+
+/**
+ * Tool call information from OpenAI agent.
+ */
+export interface ToolCall {
   id: string;
-  role: 'user' | 'assistant';
-  content: string;
+  type: string;
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+/**
+ * Chat response from backend matching ChatResponse schema.
+ */
+export interface ChatResponse {
+  response: string;
+  conversation_id: string;
+  message_id?: number;
   tool_calls?: ToolCall[];
-  timestamp: Date;
-}
-
-/**
- * API error response
- */
-export interface ApiError {
-  detail: string;
-  status?: number;
-}
-
-/**
- * Auth context (mock for now)
- */
-export interface AuthContext {
-  userId: string;
-  token: string;
-  isAuthenticated: boolean;
 }
