@@ -79,7 +79,7 @@ class Message(SQLModel, table=True):
 
         Validates that:
         - role is either 'user' or 'assistant'
-        - content is not empty
+        - content is not empty (unless tool_calls are present for assistant)
         """
         super().__init__(**data)
 
@@ -88,5 +88,7 @@ class Message(SQLModel, table=True):
             raise ValueError(f"Invalid role: {self.role}. Must be 'user' or 'assistant'")
 
         # Validate content
+        # Allow empty content for assistant messages with tool_calls
         if not self.content or len(self.content.strip()) == 0:
-            raise ValueError("Message content cannot be empty")
+            if not (self.role == 'assistant' and self.tool_calls):
+                raise ValueError("Message content cannot be empty")

@@ -96,7 +96,7 @@ async def load_or_create_conversation(
         # Load existing conversation
         stmt = select(Conversation).where(
             Conversation.id == conversation_id,
-            Conversation.user_id == int(user_id)  # Enforce user isolation
+            Conversation.user_id == user_id  # Enforce user isolation
         )
         result = await session.execute(stmt)
         conversation = result.scalar_one_or_none()

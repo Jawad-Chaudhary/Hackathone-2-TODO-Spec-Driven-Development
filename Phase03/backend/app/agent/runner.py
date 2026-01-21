@@ -123,6 +123,11 @@ async def run_agent(
             if not message.tool_calls:
                 # No more tool calls - return final response
                 final_response = message.content or ""
+
+                # If response is empty and we have tool calls, provide a default message
+                if not final_response.strip() and tool_calls_made:
+                    final_response = "I've completed your request."
+
                 logger.info(f"Agent completed after {iterations} iteration(s)")
                 return {
                     "response": final_response,
