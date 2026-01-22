@@ -112,6 +112,10 @@ secrets.yaml
 helm/*/charts/
 helm/*/*.tgz
 
+# Helm values with secrets (keep values.example.yaml as template)
+helm/*/values.yaml
+!helm/*/values.example.yaml
+
 # PDF (hackathon document)
 # Uncomment if you don't want to track the PDF
 # *.pdf
