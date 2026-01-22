@@ -1,0 +1,105 @@
+{{- if .Values.frontend.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.frontend.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.frontend.name }}
+    tier: frontend
+    {{- range $key, $value := .Values.labels }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.frontend.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.frontend.name }}
+        tier: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.frontend.service.targetPort }}
+          protocol: TCP
+        env:
+        # Backend API URL (internal cluster communication)
+        - name: NEXT_PUBLIC_API_URL
+          value: {{ .Values.frontend.env.nextPublicApiUrl | quote }}
+
+        # Backend URL for browser (external access)
+        - name: NEXT_PUBLIC_BACKEND_URL
+          value: {{ .Values.frontend.env.nextPublicBackendUrl | quote }}
+
+        # OpenAI ChatKit
+        - name: NEXT_PUBLIC_OPENAI_DOMAIN_KEY
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: openai-domain-key
+
+        # Better Auth
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: better-auth-secret
+        - name: BETTER_AUTH_URL
+          value: {{ .Values.frontend.env.betterAuthUrl | quote }}
+        - name: NEXT_PUBLIC_APP_URL
+          value: {{ .Values.frontend.env.nextPublicAppUrl | quote }}
+
+        # Node environment
+        - name: NODE_ENV
+          value: {{ .Values.frontend.env.nodeEnv | quote }}
+        - name: NODE_OPTIONS
+          value: {{ .Values.frontend.env.nodeOptions | quote }}
+
+        {{- if .Values.frontend.probes.readiness.enabled }}
+        # Readiness probe
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.frontend.probes.readiness.path }}
+            port: {{ .Values.frontend.service.targetPort }}
+          initialDelaySeconds: {{ .Values.frontend.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.frontend.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.frontend.probes.readiness.timeoutSeconds }}
+          successThreshold: {{ .Values.frontend.probes.readiness.successThreshold }}
+          failureThreshold: {{ .Values.frontend.probes.readiness.failureThreshold }}
+        {{- end }}
+
+        {{- if .Values.frontend.probes.liveness.enabled }}
+        # Liveness probe
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.frontend.probes.liveness.path }}
+            port: {{ .Values.frontend.service.targetPort }}
+          initialDelaySeconds: {{ .Values.frontend.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.frontend.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.frontend.probes.liveness.timeoutSeconds }}
+          successThreshold: {{ .Values.frontend.probes.liveness.successThreshold }}
+          failureThreshold: {{ .Values.frontend.probes.liveness.failureThreshold }}
+        {{- end }}
+
+        # Resource limits
+        resources:
+          requests:
+            memory: {{ .Values.frontend.resources.requests.memory | quote }}
+            cpu: {{ .Values.frontend.resources.requests.cpu | quote }}
+          limits:
+            memory: {{ .Values.frontend.resources.limits.memory | quote }}
+            cpu: {{ .Values.frontend.resources.limits.cpu | quote }}
+
+      # Security context
+      securityContext:
+        runAsNonRoot: {{ .Values.frontend.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.frontend.securityContext.runAsUser }}
+        fsGroup: {{ .Values.frontend.securityContext.fsGroup }}
+{{- end }}

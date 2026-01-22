@@ -1,0 +1,131 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your Todo application with AI chatbot has been deployed successfully.
+
+=======================================================================
+                    TODO APPLICATION - Phase 4
+=======================================================================
+
+Application Details:
+  - Chart Version: {{ .Chart.Version }}
+  - App Version: {{ .Chart.AppVersion }}
+  - Namespace: {{ .Values.namespace.name }}
+
+Services Deployed:
+  - Backend (FastAPI): {{ .Values.backend.replicaCount }} replicas
+  - Frontend (Next.js): {{ .Values.frontend.replicaCount }} replicas
+
+-----------------------------------------------------------------------
+ACCESSING YOUR APPLICATION
+-----------------------------------------------------------------------
+
+1. Get the frontend service URL:
+
+   {{- if eq .Values.frontend.service.type "LoadBalancer" }}
+
+   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+
+   Run these commands to get the URL:
+
+   export SERVICE_IP=$(kubectl get svc {{ .Values.frontend.name }}-service \
+     -n {{ .Values.namespace.name }} \
+     -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+   echo "Frontend URL: http://$SERVICE_IP:{{ .Values.frontend.service.port }}"
+
+   For Minikube, use:
+   minikube service {{ .Values.frontend.name }}-service -n {{ .Values.namespace.name }}
+
+   {{- else if eq .Values.frontend.service.type "NodePort" }}
+
+   export NODE_PORT=$(kubectl get svc {{ .Values.frontend.name }}-service \
+     -n {{ .Values.namespace.name }} \
+     -o jsonpath='{.spec.ports[0].nodePort}')
+   export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
+
+   echo "Frontend URL: http://$NODE_IP:$NODE_PORT"
+
+   {{- else }}
+
+   kubectl port-forward svc/{{ .Values.frontend.name }}-service \
+     -n {{ .Values.namespace.name }} {{ .Values.frontend.service.port }}:{{ .Values.frontend.service.port }}
+
+   echo "Frontend URL: http://localhost:{{ .Values.frontend.service.port }}"
+
+   {{- end }}
+
+2. Get the backend service URL:
+
+   kubectl port-forward svc/{{ .Values.backend.name }}-service \
+     -n {{ .Values.namespace.name }} {{ .Values.backend.service.port }}:{{ .Values.backend.service.port }}
+
+   echo "Backend API: http://localhost:{{ .Values.backend.service.port }}"
+
+-----------------------------------------------------------------------
+VERIFICATION STEPS
+-----------------------------------------------------------------------
+
+1. Check pod status:
+   kubectl get pods -n {{ .Values.namespace.name }}
+
+2. Check services:
+   kubectl get svc -n {{ .Values.namespace.name }}
+
+3. View backend logs:
+   kubectl logs -f deployment/{{ .Values.backend.name }} -n {{ .Values.namespace.name }}
+
+4. View frontend logs:
+   kubectl logs -f deployment/{{ .Values.frontend.name }} -n {{ .Values.namespace.name }}
+
+5. Check health endpoints:
+   # Backend health
+   kubectl exec -it deployment/{{ .Values.backend.name }} -n {{ .Values.namespace.name }} -- \
+     curl http://localhost:{{ .Values.backend.service.port }}/health
+
+   # Frontend health (root path)
+   kubectl exec -it deployment/{{ .Values.frontend.name }} -n {{ .Values.namespace.name }} -- \
+     curl http://localhost:{{ .Values.frontend.service.port }}/
+
+-----------------------------------------------------------------------
+IMPORTANT NOTES
+-----------------------------------------------------------------------
+
+1. SECRETS: Make sure you've updated the secrets in values.yaml with your actual:
+   - Neon PostgreSQL database URL
+   - OpenAI API key
+   - JWT secret
+   - Better Auth secret
+   - OpenAI domain key for ChatKit
+
+2. DATABASE: The application uses external Neon PostgreSQL database.
+   Ensure your database is accessible from the cluster.
+
+3. IMAGES: This chart uses local Docker images with imagePullPolicy: Never.
+   Make sure you've built the images in Minikube's Docker environment:
+
+   eval $(minikube docker-env)
+   docker build -t todo-backend:latest ./backend
+   docker build -t todo-frontend:latest ./frontend
+
+4. AI FEATURES: The chatbot uses OpenAI's API and includes:
+   - Task management through natural language
+   - Conversational interface
+   - MCP (Model Context Protocol) tools
+
+-----------------------------------------------------------------------
+TROUBLESHOOTING
+-----------------------------------------------------------------------
+
+If pods are not starting:
+1. Check events: kubectl get events -n {{ .Values.namespace.name }} --sort-by='.lastTimestamp'
+2. Describe pod: kubectl describe pod <pod-name> -n {{ .Values.namespace.name }}
+3. Check secrets: kubectl get secret todo-secrets -n {{ .Values.namespace.name }}
+
+If services are not accessible:
+1. Verify service endpoints: kubectl get endpoints -n {{ .Values.namespace.name }}
+2. Check pod readiness: kubectl get pods -n {{ .Values.namespace.name }}
+3. Test internal connectivity: kubectl run -it --rm debug --image=alpine --restart=Never -n {{ .Values.namespace.name }} -- sh
+
+For more information, visit the project repository.
+
+=======================================================================

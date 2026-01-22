@@ -1,0 +1,120 @@
+{{- if .Values.backend.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.backend.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.backend.name }}
+    tier: backend
+    {{- range $key, $value := .Values.labels }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.backend.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.backend.name }}
+        tier: backend
+    spec:
+      containers:
+      - name: backend
+        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.backend.service.targetPort }}
+          protocol: TCP
+        env:
+        # Database connection
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: database-url
+
+        # AI API Keys (Gemini)
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: openai-api-key
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: openai-api-key
+
+        # JWT Authentication
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: jwt-secret
+        - name: JWT_ALGORITHM
+          value: {{ .Values.backend.env.jwtAlgorithm | quote }}
+        - name: ACCESS_TOKEN_EXPIRE_MINUTES
+          value: {{ .Values.backend.env.accessTokenExpireMinutes | quote }}
+
+        # Better Auth
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: todo-secrets
+              key: better-auth-secret
+        - name: BETTER_AUTH_URL
+          value: "http://{{ .Values.frontend.name }}-service:{{ .Values.frontend.service.port }}"
+
+        # CORS
+        - name: CORS_ORIGINS
+          value: "http://localhost:{{ .Values.frontend.service.port }},http://{{ .Values.frontend.name }}-service:{{ .Values.frontend.service.port }}"
+
+        # Python environment
+        - name: PYTHONUNBUFFERED
+          value: {{ .Values.backend.env.pythonUnbuffered | quote }}
+
+        {{- if .Values.backend.probes.readiness.enabled }}
+        # Readiness probe
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.backend.probes.readiness.path }}
+            port: {{ .Values.backend.service.targetPort }}
+          initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.backend.probes.readiness.timeoutSeconds }}
+          successThreshold: {{ .Values.backend.probes.readiness.successThreshold }}
+          failureThreshold: {{ .Values.backend.probes.readiness.failureThreshold }}
+        {{- end }}
+
+        {{- if .Values.backend.probes.liveness.enabled }}
+        # Liveness probe
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.backend.probes.liveness.path }}
+            port: {{ .Values.backend.service.targetPort }}
+          initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.backend.probes.liveness.timeoutSeconds }}
+          successThreshold: {{ .Values.backend.probes.liveness.successThreshold }}
+          failureThreshold: {{ .Values.backend.probes.liveness.failureThreshold }}
+        {{- end }}
+
+        # Resource limits
+        resources:
+          requests:
+            memory: {{ .Values.backend.resources.requests.memory | quote }}
+            cpu: {{ .Values.backend.resources.requests.cpu | quote }}
+          limits:
+            memory: {{ .Values.backend.resources.limits.memory | quote }}
+            cpu: {{ .Values.backend.resources.limits.cpu | quote }}
+
+      # Security context
+      securityContext:
+        runAsNonRoot: {{ .Values.backend.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.backend.securityContext.runAsUser }}
+        fsGroup: {{ .Values.backend.securityContext.fsGroup }}
+{{- end }}

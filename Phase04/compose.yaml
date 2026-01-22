@@ -1,0 +1,58 @@
+services:
+  python-backend:
+    build:
+      context: ./backend
+      dockerfile: DOCKERFILE
+    restart: unless-stopped
+    init: true
+    env_file: ./backend/.env  # Uses .env for secrets and config
+    ports:
+      - "8000:8000"  # FastAPI default port
+    depends_on:
+      - postgres-db
+    networks:
+      - appnet
+    # If you want to run tests, you can exec into this container
+
+  typescript-frontend:
+    build:
+      context: ./frontend
+      dockerfile: DOCKERFILE
+    restart: unless-stopped
+    init: true
+    # env_file: ./frontend/.env.local  # Uncomment if .env.local exists
+    ports:
+      - "3000:3000"  # Next.js default port
+    networks:
+      - appnet
+    depends_on:
+      - python-backend
+    # Frontend expects backend at http://localhost:8000
+
+  postgres-db:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database
+    ports:
+      - "5432:5432"  # PostgreSQL default port
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - appnet
+    # Make sure DATABASE_URL in backend .env matches these credentials
+
+networks:
+  appnet:
+    driver: bridge
+
+volumes:
+  pgdata:
+    # Persistent storage for PostgreSQL
