@@ -1,0 +1,6 @@
+# [Task T033] Recurring Service Python dependencies
+
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+dapr>=1.14.0
+pydantic>=2.5.0

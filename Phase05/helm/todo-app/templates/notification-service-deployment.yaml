@@ -1,0 +1,92 @@
+{{- if .Values.notificationService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.notificationService.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.notificationService.name }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.notificationService.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.notificationService.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.notificationService.name }}
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "notification-service"
+        dapr.io/app-port: "{{ .Values.notificationService.service.targetPort }}"
+        dapr.io/log-level: "info"
+    spec:
+      {{- with .Values.notificationService.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ .Values.notificationService.name }}
+        image: "{{ .Values.notificationService.image.repository }}:{{ .Values.notificationService.image.tag }}"
+        imagePullPolicy: {{ .Values.notificationService.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.notificationService.service.targetPort }}
+          name: http
+          protocol: TCP
+        env:
+        - name: DAPR_PUBSUB_NAME
+          value: {{ .Values.notificationService.env.daprPubsubName | quote }}
+        - name: DAPR_STATE_STORE
+          value: {{ .Values.notificationService.env.daprStateStore | quote }}
+        - name: PORT
+          value: "{{ .Values.notificationService.service.targetPort }}"
+        {{- with .Values.notificationService.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.notificationService.probes.liveness.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.notificationService.probes.liveness.path }}
+            port: {{ .Values.notificationService.service.targetPort }}
+          initialDelaySeconds: {{ .Values.notificationService.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.notificationService.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.notificationService.probes.liveness.timeoutSeconds }}
+          successThreshold: {{ .Values.notificationService.probes.liveness.successThreshold }}
+          failureThreshold: {{ .Values.notificationService.probes.liveness.failureThreshold }}
+        {{- end }}
+        {{- if .Values.notificationService.probes.readiness.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.notificationService.probes.readiness.path }}
+            port: {{ .Values.notificationService.service.targetPort }}
+          initialDelaySeconds: {{ .Values.notificationService.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.notificationService.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.notificationService.probes.readiness.timeoutSeconds }}
+          successThreshold: {{ .Values.notificationService.probes.readiness.successThreshold }}
+          failureThreshold: {{ .Values.notificationService.probes.readiness.failureThreshold }}
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.notificationService.name }}-service
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.notificationService.name }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.notificationService.service.type }}
+  selector:
+    app: {{ .Values.notificationService.name }}
+  ports:
+  - port: {{ .Values.notificationService.service.port }}
+    targetPort: {{ .Values.notificationService.service.targetPort }}
+    protocol: TCP
+    name: http
+{{- end }}

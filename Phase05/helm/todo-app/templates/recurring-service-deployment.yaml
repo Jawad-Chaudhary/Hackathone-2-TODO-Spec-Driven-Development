@@ -1,0 +1,92 @@
+{{- if .Values.recurringService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.recurringService.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.recurringService.name }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.recurringService.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.recurringService.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.recurringService.name }}
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "recurring-service"
+        dapr.io/app-port: "{{ .Values.recurringService.service.targetPort }}"
+        dapr.io/log-level: "info"
+    spec:
+      {{- with .Values.recurringService.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ .Values.recurringService.name }}
+        image: "{{ .Values.recurringService.image.repository }}:{{ .Values.recurringService.image.tag }}"
+        imagePullPolicy: {{ .Values.recurringService.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.recurringService.service.targetPort }}
+          name: http
+          protocol: TCP
+        env:
+        - name: DAPR_PUBSUB_NAME
+          value: {{ .Values.recurringService.env.daprPubsubName | quote }}
+        - name: DAPR_STATE_STORE
+          value: {{ .Values.recurringService.env.daprStateStore | quote }}
+        - name: PORT
+          value: "{{ .Values.recurringService.service.targetPort }}"
+        {{- with .Values.recurringService.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.recurringService.probes.liveness.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.recurringService.probes.liveness.path }}
+            port: {{ .Values.recurringService.service.targetPort }}
+          initialDelaySeconds: {{ .Values.recurringService.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.recurringService.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.recurringService.probes.liveness.timeoutSeconds }}
+          successThreshold: {{ .Values.recurringService.probes.liveness.successThreshold }}
+          failureThreshold: {{ .Values.recurringService.probes.liveness.failureThreshold }}
+        {{- end }}
+        {{- if .Values.recurringService.probes.readiness.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.recurringService.probes.readiness.path }}
+            port: {{ .Values.recurringService.service.targetPort }}
+          initialDelaySeconds: {{ .Values.recurringService.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.recurringService.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.recurringService.probes.readiness.timeoutSeconds }}
+          successThreshold: {{ .Values.recurringService.probes.readiness.successThreshold }}
+          failureThreshold: {{ .Values.recurringService.probes.readiness.failureThreshold }}
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.recurringService.name }}-service
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.recurringService.name }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.recurringService.service.type }}
+  selector:
+    app: {{ .Values.recurringService.name }}
+  ports:
+  - port: {{ .Values.recurringService.service.port }}
+    targetPort: {{ .Values.recurringService.service.targetPort }}
+    protocol: TCP
+    name: http
+{{- end }}

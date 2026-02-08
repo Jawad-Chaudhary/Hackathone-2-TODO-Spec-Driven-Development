@@ -1,0 +1,23 @@
+# Helm Chart for Todo Application
+apiVersion: v2
+name: todo-app
+description: A Helm chart for Todo application with AI chatbot capabilities
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - todo
+  - chatbot
+  - ai
+  - fastapi
+  - nextjs
+
+maintainers:
+  - name: Todo App Team
+    email: team@todoapp.local
+
+sources:
+  - https://github.com/yourusername/todo-app
+
+home: https://github.com/yourusername/todo-app

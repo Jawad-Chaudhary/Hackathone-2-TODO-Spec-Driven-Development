@@ -1,0 +1,37 @@
+# Dapr Pub/Sub component for local Redpanda on Minikube
+
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+  namespace: todo-app
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+  # Kafka brokers - using Redpanda service in redpanda namespace
+  - name: brokers
+    value: "redpanda.redpanda.svc.cluster.local:9093"
+
+  # No authentication for local Redpanda
+  - name: authType
+    value: "none"
+
+  # Consumer group configuration
+  - name: consumerGroup
+    value: "todo-app-group"
+
+  # Performance tuning
+  - name: maxMessageBytes
+    value: "1024"
+  - name: version
+    value: "2.0.0"
+
+  # No TLS for local development
+  - name: enableTLS
+    value: "false"
+
+scopes:
+- todo-backend
+- todo-recurring-service
+- todo-notification-service

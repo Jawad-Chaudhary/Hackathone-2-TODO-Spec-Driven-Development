@@ -1,0 +1,205 @@
+# ================================
+# TODO App - Hackathon Project
+# ================================
+
+# Environment Variables & Secrets
+# ================================
+.env
+.env.*
+!.env.example
+*.env
+*.env.local
+.env.deployment
+secrets.yaml
+*-secrets.yaml
+*.pem
+*.key
+*.crt
+*.cer
+.oci/
+
+# Python
+# ================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+.Python
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage/
+*.cover
+*.py,cover
+.hypothesis/
+htmlcov/
+.tox/
+.nox/
+nosetests.xml
+coverage.xml
+
+# Node.js & npm/yarn
+# ================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+.npm/
+.eslintcache
+
+# Next.js
+# ================================
+.next/
+out/
+build/
+.vercel
+.turbo
+*.tsbuildinfo
+next-env.d.ts
+
+# Database
+# ================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Docker
+# ================================
+.dockerignore
+
+# Kubernetes
+# ================================
+# Keep k8s manifests but ignore generated/temporary files
+*.generated.yaml
+*-generated.yaml
+kubectl-edit-*.yaml
+
+# Helm
+# ================================
+# Keep helm charts but ignore dependencies and packages
+helm/*/charts/
+helm/*/*.tgz
+helm/*/Chart.lock
+
+# Helm values with secrets (keep example/template files)
+helm/*/values.yaml
+!helm/*/values.example.yaml
+!helm/*/values.template.yaml
+
+# IDEs & Editors
+# ================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+.project
+.classpath
+.settings/
+
+# OS Files
+# ================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
+# ================================
+logs/
+*.log
+*.log.*
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary Files
+# ================================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.cache/
+
+# Claude Code & AI Tools
+# ================================
+.claude/
+.specify/
+history/
+
+# Backup Files
+# ================================
+*.bak
+*.backup
+*.old
+*-backup
+*-old
+
+# Jupyter Notebook
+# ================================
+.ipynb_checkpoints
+
+# pyenv
+# ================================
+.python-version
+
+# Misc
+# ================================
+NUL
+:USERPROFILE.wslconfig
+
+# Local Development
+# ================================
+*.local
+
+# Keep Important Files (Exceptions)
+# ================================
+!.env.example
+!**/.env.example
+!k8s/secrets.yaml
+!README.md
+!LICENSE
+!.gitkeep
